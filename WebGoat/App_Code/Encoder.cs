@@ -6,6 +6,7 @@ using System.Text;
 using System.Security.Cryptography;
 using System.Data;
 using System.Web.Security;
+using System.Web.Script.Serialization;
 
 namespace OWASP.WebGoat.NET.App_Code
 {
@@ -200,28 +201,27 @@ namespace OWASP.WebGoat.NET.App_Code
 
         public static string ToJSONSAutocompleteString(string query, DataTable dt)
         {
-            char[] badvalues = { '[', ']', '{', '}'};
+            // Ensure query and email suggestions are properly encoded by serializing a typed object to JSON.
+            var suggestions = new List<string>();
+            var data = new List<string>();
 
-            foreach (char c in badvalues)
-                query = query.Replace(c, '#');
-
-            StringBuilder sb = new StringBuilder();
-
-            sb.Append("{\nquery:'" + query + "',\n");
-            sb.Append("suggestions:[");
-            
             for (int i = 0; i < dt.Rows.Count; i++)
             {
                 DataRow row = dt.Rows[i];
                 string email = row[0].ToString();
-                sb.Append("'" + email + "',");
+                suggestions.Add(email);
+                data.Add(email);
             }
-            
-            sb = new StringBuilder(sb.ToString().Substring(0, sb.ToString().Length - 1));
-            sb.Append("],\n");
-            sb.Append("data:" + sb.ToString().Substring(sb.ToString().IndexOf('['), (sb.ToString().LastIndexOf(']') - sb.ToString().IndexOf('[')) + 1) + "\n}");
 
-            return sb.ToString();
+            var responseObj = new
+            {
+                query = query,
+                suggestions = suggestions,
+                data = data
+            };
+
+            var serializer = new JavaScriptSerializer();
+            return serializer.Serialize(responseObj);
         }
 
         public string EncodeTicket(string token)
